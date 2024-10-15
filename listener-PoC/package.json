@@ -1,0 +1,20 @@
+{
+  "name": "poc",
+  "version": "1.0.0",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "axios": "^1.7.7",
+    "chatgpt": "^5.2.5",
+    "cheerio": "^1.0.0",
+    "openai": "^4.63.0",
+    "puppeteer": "^23.4.0"
+  }
+}
