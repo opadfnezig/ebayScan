@@ -1,0 +1,84 @@
+services:
+  logger:
+    image: datalust/seq:latest
+    environment:
+      - ACCEPT_EULA=Y
+    volumes:
+      - seq-data:/data
+    ports:
+      - '5341:5341'
+      - '8080:80'
+    networks:
+      - es_network
+
+  database:
+    image: mongo:latest
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGODB_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGODB_PASSWORD}
+    volumes:
+      - mongodb-data:/data/db
+    ports:
+      - '27017:27017'
+    networks:
+      - es_network
+
+  server:
+    build:
+      context: ./server
+    environment:
+      MONGODB_USERNAME: ${MONGODB_USERNAME}
+      MONGODB_PASSWORD: ${MONGODB_PASSWORD}
+      DATABASE_HOST: ${DATABASE_HOST}
+      DATABASE_NAME: ${DATABASE_NAME}
+      #DATABASE_PORT: ${DATABASE_PORT}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      KAFKA_BROKER: ${KAFKA_BROKER}
+      SEQ_URL: ${SEQ_URL}
+    ports:
+      - '3000:3000'
+    depends_on:
+      - database
+      - logger
+      - message-broker
+    volumes:
+      - ./global/database:/usr/src/app/database
+      - ./global/logger:/usr/src/app/logger
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - es_network
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - '2181:2181'
+    networks:
+      - es_network
+
+  message-broker:
+    image: confluentinc/cp-kafka:latest
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://message-broker:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+    depends_on:
+      - zookeeper
+    ports:
+      - '9092:9092'
+    networks:
+      - es_network
+    restart: on-failure
+
+volumes:
+  seq-data:
+  mongodb-data:
+
+
+networks:
+  es_network:

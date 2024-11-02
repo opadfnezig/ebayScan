@@ -7,7 +7,7 @@ const emitter = new eventEmitter();
 const queue = new Queue();
 
 const kafka = new Kafka({
-    clientId: process.env.KAFKA_CLIENT_ID,
+    clientId: `listener.${process.env.NAME}`,
     brokers: [process.env.KAFKA_BROKER],
 });
 
