@@ -22,7 +22,7 @@ async function sendMessage(message) {
     await producer.send({
         topic: `listener.${process.env.NAME}`,
         messages: [
-            { value: message },
+            { value: { ...message, listenerId: process.env.LISTENER_ID } },
         ],
     });
 }

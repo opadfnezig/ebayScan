@@ -19,14 +19,14 @@ const producer = kafka.producer();
         eachMessage: async ({ topic, partition, message }) => {
             const score = (await ChatGPTAPI.sendMessage(JSON.stringify(message.value), {
                 systemMesage: `You should evaluate products from 0 to 100 due to client's requirements.
-                                Requirements: ${process.env.REQUIREMENTS}. Just score is expected.` 
+                                Requirements: ${process.env.REQUIREMENTS}. Just score is expected.`
             })).data;
             const newMessage = JSON.parse(message.value);
             newMessage.score = score;
             await producer.send({
                 topic: `search.${process.env.NAME}`,
                 messages: [
-                    { value: newMessage },
+                    { value: { ...newMessage, searchId: process.env.SEARCH_ID } },
                 ],
             });
         }

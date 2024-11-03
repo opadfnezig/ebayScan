@@ -34,7 +34,7 @@ services:
       #DATABASE_PORT: ${DATABASE_PORT}
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       KAFKA_BROKER: ${KAFKA_BROKER}
-      SEQ_URL: ${SEQ_URL}
+      SEQ_URL: ${SEQ_URL}lfq
     ports:
       - '3000:3000'
     depends_on:
@@ -45,6 +45,7 @@ services:
       - ./global/database:/usr/src/app/database
       - ./global/logger:/usr/src/app/logger
       - /var/run/docker.sock:/var/run/docker.sock
+      - /usr/bin/docker:/usr/bin/docker
     networks:
       - es_network
 

@@ -22,7 +22,8 @@ const Search = mongoose.model('Search', searchSchema);
 const searchResultSchema = new mongoose.Schema({
     searchId: { type: mongoose.Schema.Types.ObjectId, ref: 'Search', required: true },
     score: { type: Number, required: true },
-    listenResultId: { type: mongoose.Schema.Types.ObjectId, ref: 'ListenResult', required: true }
+    listenResultId: { type: mongoose.Schema.Types.ObjectId, ref: 'ListenResult', required: true },
+    enabled: { type: Boolean, default: false }
 });
 
 const SearchResult = mongoose.model('SearchResult', searchResultSchema);
@@ -37,6 +38,6 @@ const ListenResult = mongoose.model('ListenResult', listenResultSchema);
 module.exports = {
     Listener,
     Search,
-    SearchResult,
-    ListenResult
+    ListenResult,
+    SearchResult
 };

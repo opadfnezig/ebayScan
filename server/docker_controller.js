@@ -1,5 +1,5 @@
 const Docker = require('dockerode');
-const docker = new Docker({ socketPath: '/var/run/docker.sock' });
+const docker = new Docker();
 const logger = require('./logger/main.js')().taskLogger;
 
 async function enableContainer(image, name, env) {
@@ -14,7 +14,9 @@ async function enableContainer(image, name, env) {
                 RestartPolicy: { Name: 'always' },
                 NetworkMode: 'es_network'
             },
-            volumes: ['/usr/scr/app/logger:/usr/src/app/logger']
+            volumes: {
+                "/usr/scr/app/logger": { "bind": "/usr/src/app/logger", "mode": "rw" }
+            }
         });
         await newContainer.start();
         logger.debug(`Container ${name} enabled and started.`);
@@ -34,21 +36,21 @@ async function disableContainer(name) {
 };
 
 async function enable_listener(name, env) {
-    await enableContainer('es-listener', `listener-${name}`, {
+    await enableContainer('es-listener', `listener-${name}`, [
         ...env,
-        NAME: name,
-        OPENAI_API_KEY: process.env.OPENAI_API_KEY,
-        KAFKA_BROKER: process.env.KAFKA_BROKER
-    });
+        `NAME=${name}`,
+        `OPENAI_API_KEY=${process.env.OPENAI_API_KEY}`,
+        `KAFKA_BROKER=${process.env.KAFKA_BROKER}`
+    ]);
 };
 
 async function enable_search(name, env) {
-    await enableContainer('es-search', `search-${name}`, {
+    await enableContainer('es-search', `search-${name}`, [
         ...env,
-        NAME: name,
-        OPENAI_API_KEY: process.env.OPENAI_API_KEY,
-        KAFKA_BROKER: process.env.KAFKA_BROKER
-    });
+        `NAME=${name}`,
+        `OPENAI_API_KEY=${process.env.OPENAI_API_KEY}`,
+        `KAFKA_BROKER=${process.env.KAFKA_BROKER}`
+    ]);
 };
 async function disable_listener(name) { await disableContainer(`listener-${name}`); };
 
