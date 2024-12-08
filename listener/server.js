@@ -1,8 +1,13 @@
+const { taskLogger } = require('./logger/main')();
+taskLogger.debug('started');
+
 const { Kafka } = require('kafkajs');
 const ebay = require('./ebay/main');
 const Queue = require('queue-fifo');
-const eventEmitter = require('events');
-const emitter = new eventEmitter();
+taskLogger.debug('imports ready');
+
+const event = require('events');
+const emitter = new event();
 
 const queue = new Queue();
 
@@ -12,8 +17,10 @@ const kafka = new Kafka({
 });
 
 const producer = kafka.producer();
+
 (async () => {
     await producer.connect();
+    taskLogger.debug('producer connected');
     await ebay.open(process.env.URL);
     await start();
 })();
@@ -22,7 +29,7 @@ async function sendMessage(message) {
     await producer.send({
         topic: `listener.${process.env.NAME}`,
         messages: [
-            { value: { ...message, listenerId: process.env.LISTENER_ID } },
+            { value: JSON.stringify({ ...message, listenerId: process.env.LISTENER_ID }) },
         ],
     });
 }
@@ -38,7 +45,7 @@ async function checkProducts() {
     const productList = await ebay.getProductList();
     if (queue.size() == 0) {
         for (var i in productList) {
-            if (productList.size() - 1 - i < process.env.PRODUCTS_TO_SEND) {
+            if (productList.length - 1 - i < process.env.PRODUCTS_TO_SEND) {
                 const product = await ebay.processProduct(productList[i]);
                 queue.enqueue(product);
                 emitter.emit('newProduct', product);
@@ -49,6 +56,7 @@ async function checkProducts() {
         const queueLast = queue[queue.length - 1];
         let insert = false;
         for (var i in productList) {
+            taskLogger.debug(productList);
             if (productList[i].link == queueLast.link)
                 insert = true;
             else if (insert) {
@@ -61,6 +69,4 @@ async function checkProducts() {
     }
 }
 
-eventEmitter.on('newProduct', async (product) => {
-    await sendMessage(JSON.stringify(product));
-});
+emitter.on('newProduct', async (product) => { await sendMessage(product); });

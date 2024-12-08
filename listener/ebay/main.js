@@ -1,30 +1,31 @@
 const pageParser = require('./parsers/pageParser');
 const productParser = require('./parsers/productParser');
-const { taskLogger } = require('./logger/main.js')();
+const { taskLogger } = require('../logger/main.js')();
 
 const browser = require('./browser');
-const ChatGPTAPI = require('../chatGPTAPI')();
+let ChatGPTAPI;
 
 async function open(url) {
     await browser.open(url);
-    taskLogger.debug('browser started');
     do {
         taskLogger.debug('language change started');
-        changeLanguage();
+        await browser.changeLanguage();
         await new Promise(resolve => setTimeout(resolve, 5000));
-        await browser.listPage.reload();
-    } while (await pageParser.parseSignInText(page) != 'Hi! Sign in or register');
+        await browser.getListPage().reload();
+    } while (await pageParser.parseSignInText(browser.getListPage()) != 'Hi! Sign in or register');
+    taskLogger.debug('language change finished');
 }
 
 async function getProductList() {
     await browser.updateListPage();
-    return pageParser.parseProductList(browser.listPage);
+    return pageParser.parseProductList(browser.getListPage());
 }
 
 async function processProduct(product) {
+    await initApi();
     productParser.parsePrice(product);
     const productPage = await browser.getProductPage(product.link);
-    product.descriptionUnprocessed = await pageParser.parseDescription(product, productPage);
+    product.descriptionUnprocessed = await pageParser.parseDescription(productPage);
     await productPage.close();
     product.description = (await ChatGPTAPI.sendMessage(JSON.stringify(product), {
         systemMessage: `you should work on this product's description: ${product},
@@ -36,6 +37,11 @@ async function processProduct(product) {
 
 async function close() {
     await browser.close();
+}
+
+async function initApi() {
+    if (!ChatGPTAPI)
+        ChatGPTAPI = await require('../chatGPTAPI')();
 }
 
 module.exports = {

@@ -12,20 +12,20 @@ async function open(url) {
         ]
     });
 
-    listPage = await browser.browser.newPage();
+    listPage = await browser.newPage();
     await listPage.goto(url);
 }
 
 async function changeLanguage() {
-    await page.waitForSelector('#gh-ug');
-    await page.$eval('li#gh-eb-Geo', el => el.click());
-    await page.waitForSelector(`[lang='en-US']`);
-    await page.$eval(`[lang='en-US']`, el => el.click());
+    await listPage.waitForSelector('#gh-ug');
+    await listPage.$eval('li#gh-eb-Geo', el => el.click());
+    await listPage.waitForSelector(`[lang='en-US']`);
+    await listPage.$eval(`[lang='en-US']`, el => el.click());
 }
 
 async function updateListPage() {
-    listPage.reload();
-    await page.waitForSelector('.s-item.s-item__dsa-on-bottom.s-item__pl-on-bottom');
+    await listPage.reload();
+    await listPage.waitForSelector('.s-item.s-item__dsa-on-bottom.s-item__pl-on-bottom');
     return listPage;
 }
 
@@ -35,11 +35,14 @@ async function getProductPage(url) {
     return page;
 }
 
+function getListPage() { return listPage; }
+function getBrowser() { return browser; }
+
 module.exports = {
-    browser,
-    listPage,
     open,
     changeLanguage,
     updateListPage,
-    getProductPage
+    getProductPage,
+    getListPage,
+    getBrowser
 }

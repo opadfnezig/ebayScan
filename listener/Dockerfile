@@ -31,6 +31,6 @@ RUN echo "puppeteeruser:password" | chpasswd
 WORKDIR /usr/src/app
 COPY package*.json ./
 RUN npm install
-COPY server.js /usr/src/app/server.js
+COPY . /usr/src/app/
 
 CMD ["node", "server.js"]
