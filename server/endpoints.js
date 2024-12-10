@@ -33,6 +33,17 @@ app.put('/listener/:id', async (req, res) => {
     try {
         const listener = await Listener.findByIdAndUpdate(req.params.id, req.body, { new: true });
         if (!listener) return res.status(404).json({ error: 'Listener not found' });
+        if (listener.enabled) {
+            await disable_listener(listener.name);
+            await enable_listener(listener.name,
+                [
+                    `CHECK_INTERVAL=${listener.checkInterval}`,
+                    `PRODUCTS_TO_SEND=${10}`,
+                    `PRODUCT_PARAMS=${JSON.stringify(listener.productParams)}`,
+                    `LISTENER_ID=${listener._id}`,
+                    `URL=${listener.url}`
+                ]);
+        }
         res.status(200).json(listener);
     } catch (error) {
         taskLogger.error(error.message)
@@ -43,6 +54,8 @@ app.put('/listener/:id', async (req, res) => {
 app.delete('/listener/:id', async (req, res) => {
     try {
         const listener = await Listener.findByIdAndDelete(req.params.id);
+        if (listener.enabled)
+            await disable_listener(listener.name);
         if (!listener) return res.status(404).json({ error: 'Listener not found' });
         res.status(200).json({ message: 'Listener deleted' });
     } catch (error) {
@@ -67,7 +80,7 @@ app.post('/listener/:id/enable', async (req, res) => {
         if (!listener) return res.status(404).json({ error: 'Listener not found' });
         await enable_listener(listener.name, [
             `CHECK_INTERVAL=${listener.checkInterval}`,
-            `PRODUCTS_TO_SEND=${listener.productsToSend}`,
+            `PRODUCTS_TO_SEND=${10}`,
             `PRODUCT_PARAMS=${JSON.stringify(listener.productParams)}`,
             `LISTENER_ID=${listener._id}`,
             `URL=${listener.url}`
@@ -107,6 +120,11 @@ app.post('/search', async (req, res) => {
     try {
         const search = new Search(req.body);
         await search.save();
+        await enable_search(search.name, [
+            `LISTENER_NAME=listener-${search.listenerName}`,
+            `SEARCH_ID=${search._id}`,
+            `REQUIREMENTS=${search.requirements}`
+        ]);
         res.status(201).json(search);
     } catch (error) {
         taskLogger.error(error.message)
@@ -118,6 +136,12 @@ app.put('/search/:id', async (req, res) => {
     try {
         const search = await Search.findByIdAndUpdate(req.params.id, req.body, { new: true });
         if (!search) return res.status(404).json({ error: 'Search not found' });
+        await disable_search(search.name);
+        await enable_search(search.name, [
+            `LISTENER_NAME=listener-${search.listenerName}`,
+            `SEARCH_ID=${search._id}`,
+            `REQUIREMENTS=${search.requirements}`
+        ]);
         res.status(200).json(search);
     } catch (error) {
         taskLogger.error(error.message)
@@ -129,6 +153,7 @@ app.delete('/search/:id', async (req, res) => {
     try {
         const search = await Search.findByIdAndDelete(req.params.id);
         if (!search) return res.status(404).json({ error: 'Search not found' });
+        await disable_search(search.name);
         res.status(200).json({ message: 'Search deleted' });
     } catch (error) {
         taskLogger.error(error.message)
@@ -140,34 +165,6 @@ app.get('/searches', async (req, res) => {
     try {
         const searches = await Search.find();
         res.status(200).json(searches);
-    } catch (error) {
-        taskLogger.error(error.message)
-        res.status(500).json({ error: 'Server error' });
-    }
-});
-
-app.post('/search/:id/enable', async (req, res) => {
-    try {
-        const search = await Search.findByIdAndUpdate(req.params.id, { enabled: true }, { new: true });
-        if (!search) return res.status(404).json({ error: 'Listener not found' });
-        await enable_search(search.name, [
-            `LISTENER_NAME=listener-${search.listenerName}`,
-            `SEARCH_ID=${search._id}`,
-            `REQUIREMENTS=${search.requirements}`
-        ]);
-        res.status(200).json({ message: 'Listener enabled', search });
-    } catch (error) {
-        taskLogger.error(error.message)
-        res.status(500).json({ error: 'Server error' });
-    }
-});
-
-app.post('/search/:id/disable', async (req, res) => {
-    try {
-        const search = await Search.findByIdAndUpdate(req.params.id, { enabled: false }, { new: true });
-        if (!search) return res.status(404).json({ error: 'Listener not found' });
-        await disable_search(search.name);
-        res.status(200).json({ message: 'Listener disabled', search });
     } catch (error) {
         taskLogger.error(error.message)
         res.status(500).json({ error: 'Server error' });
@@ -186,97 +183,9 @@ app.get('/search_result/:id', async (req, res) => {
     }
 });
 
-app.post('/search_result', async (req, res) => {
+app.get('/search_results/:searchName', async (req, res) => {
     try {
-        const result = new SearchResult(req.body);
-        await result.save();
-        res.status(201).json(result);
-    } catch (error) {
-        taskLogger.error(error.message)
-        res.status(500).json({ error: 'Server error' });
-    }
-});
-
-app.put('/search_result/:id', async (req, res) => {
-    try {
-        const result = await SearchResult.findByIdAndUpdate(req.params.id, req.body, { new: true });
-        if (!result) return res.status(404).json({ error: 'Result not found' });
-        res.status(200).json(result);
-    } catch (error) {
-        taskLogger.error(error.message)
-        res.status(500).json({ error: 'Server error' });
-    }
-});
-
-app.delete('/search_result/:id', async (req, res) => {
-    try {
-        const result = await SearchResult.findByIdAndDelete(req.params.id);
-        if (!result) return res.status(404).json({ error: 'Result not found' });
-        res.status(200).json({ message: 'Result deleted' });
-    } catch (error) {
-        taskLogger.error(error.message)
-        res.status(500).json({ error: 'Server error' });
-    }
-});
-
-app.get('/search_results/:searchId', async (req, res) => {
-    try {
-        const results = await SearchResult.find({ searchId: req.params.searchId });
-        res.status(200).json(results);
-    } catch (error) {
-        taskLogger.error(error.message)
-        res.status(500).json({ error: 'Server error' });
-    }
-});
-
-// listen_result CRUD
-app.get('/listen_result/:id', async (req, res) => {
-    try {
-        const result = await ListenResult.findById(req.params.id);
-        if (!result) return res.status(404).json({ error: 'Result not found' });
-        res.status(200).json(result);
-    } catch (error) {
-        taskLogger.error(error.message)
-        res.status(500).json({ error: 'Server error' });
-    }
-});
-
-app.post('/listen_result', async (req, res) => {
-    try {
-        const result = new ListenResult(req.body);
-        await result.save();
-        res.status(201).json(result);
-    } catch (error) {
-        taskLogger.error(error.message)
-        res.status(500).json({ error: 'Server error' });
-    }
-});
-
-app.put('/listen_result/:id', async (req, res) => {
-    try {
-        const result = await ListenResult.findByIdAndUpdate(req.params.id, req.body, { new: true });
-        if (!result) return res.status(404).json({ error: 'Result not found' });
-        res.status(200).json(result);
-    } catch (error) {
-        taskLogger.error(error.message)
-        res.status(500).json({ error: 'Server error' });
-    }
-});
-
-app.delete('/listen_result/:id', async (req, res) => {
-    try {
-        const result = await ListenResult.findByIdAndDelete(req.params.id);
-        if (!result) return res.status(404).json({ error: 'Result not found' });
-        res.status(200).json({ message: 'Result deleted' });
-    } catch (error) {
-        taskLogger.error(error.message)
-        res.status(500).json({ error: 'Server error' });
-    }
-});
-
-app.get('/listen_results/:listenerId', async (req, res) => {
-    try {
-        const results = await ListenResult.find({ searchId: req.params.listenerId });
+        const results = await SearchResult.find({ searchName: req.params.searchName });
         res.status(200).json(results);
     } catch (error) {
         taskLogger.error(error.message)

@@ -3,7 +3,7 @@ module.exports = async () => {
     return new ChatGPTAPI(
         {
             apiKey: process.env.OPENAI_API_KEY,
-            completitionParams: {
+            completionParams: {
                 model: 'gpt-3.5-turbo',
                 temperature: 0.7,
                 max_tokens: 150,

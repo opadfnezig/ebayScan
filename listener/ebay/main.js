@@ -27,11 +27,24 @@ async function processProduct(product) {
     const productPage = await browser.getProductPage(product.link);
     product.descriptionUnprocessed = await pageParser.parseDescription(productPage);
     await productPage.close();
-    product.description = (await ChatGPTAPI.sendMessage(JSON.stringify(product), {
-        systemMessage: `you should work on this product's description: ${product},
-            I expect you to provide better product description in json format. Always use array for product, doesn't matter if it's one or multiple.
-            something like {[{title: 'product1', product_params: ${process.env.PRODUCT_PARAMS} description: 'description1'}...]}. Just json response is expected.`
-    })).data;
+    const response = await ChatGPTAPI.sendMessage(JSON.stringify(product), {
+        systemMessage: `
+        You will receive raw product data in JSON format. Your task is to process it as follows:
+    - Extract the "product_params" from the input.
+    - Format the response as JSON in the following structure:
+        [
+            {"${JSON.parse(process.env.PRODUCT_PARAMS).join('\", \"')}"}
+        ]
+    - If the input contains multiple products, add them as separate elements in the array. 
+      For example:
+      [
+            {"${JSON.parse(process.env.PRODUCT_PARAMS).join('\", \"')}"}
+            {"${JSON.parse(process.env.PRODUCT_PARAMS).join('\", \"')}"}
+      ]
+    - Return only the JSON response. Do not copy the input exactly.
+    - Data in () is just for you. don't include it in responce.
+`});
+    product.description = JSON.parse(response.detail.choices[0].message.content);
     return product;
 }
 

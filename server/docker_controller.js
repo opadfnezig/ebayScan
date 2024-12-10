@@ -12,10 +12,7 @@ async function enableContainer(image, name, env) {
             Env: env,
             HostConfig: {
                 RestartPolicy: { Name: 'always' },
-                NetworkMode: 'es_network'
-            },
-            volumes: {
-                "/usr/scr/app/logger": { "bind": "/usr/src/app/logger", "mode": "rw" }
+                NetworkMode: 'ebayscan_es_network'
             }
         });
         await newContainer.start();
@@ -40,7 +37,8 @@ async function enable_listener(name, env) {
         ...env,
         `NAME=${name}`,
         `OPENAI_API_KEY=${process.env.OPENAI_API_KEY}`,
-        `KAFKA_BROKER=${process.env.KAFKA_BROKER}`
+        `KAFKA_BROKER=${process.env.KAFKA_BROKER}`,
+        `SEQ_URL=${process.env.SEQ_URL}`
     ]);
 };
 
@@ -49,7 +47,8 @@ async function enable_search(name, env) {
         ...env,
         `NAME=${name}`,
         `OPENAI_API_KEY=${process.env.OPENAI_API_KEY}`,
-        `KAFKA_BROKER=${process.env.KAFKA_BROKER}`
+        `KAFKA_BROKER=${process.env.KAFKA_BROKER}`,
+        `SEQ_URL=${process.env.SEQ_URL}`
     ]);
 };
 async function disable_listener(name) { await disableContainer(`listener-${name}`); };

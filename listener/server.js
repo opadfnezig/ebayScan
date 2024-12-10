@@ -1,15 +1,12 @@
 const { taskLogger } = require('./logger/main')();
-taskLogger.debug('started');
 
 const { Kafka } = require('kafkajs');
 const ebay = require('./ebay/main');
-const Queue = require('queue-fifo');
-taskLogger.debug('imports ready');
 
 const event = require('events');
 const emitter = new event();
 
-const queue = new Queue();
+const processedLinks = new Set();
 
 const kafka = new Kafka({
     clientId: `listener.${process.env.NAME}`,
@@ -20,7 +17,7 @@ const producer = kafka.producer();
 
 (async () => {
     await producer.connect();
-    taskLogger.debug('producer connected');
+    taskLogger.debug(`producer connected ${process.env.NAME}`);
     await ebay.open(process.env.URL);
     await start();
 })();
@@ -35,38 +32,26 @@ async function sendMessage(message) {
 }
 
 async function start() {
-    setTimeout(async () => {
-        await checkProducts();
-        start();
-    }, process.env.CHECK_INTERVAL);
+    await checkProducts();
+    setTimeout(start, process.env.CHECK_INTERVAL);
 }
 
 async function checkProducts() {
     const productList = await ebay.getProductList();
-    if (queue.size() == 0) {
-        for (var i in productList) {
-            if (productList.length - 1 - i < process.env.PRODUCTS_TO_SEND) {
-                const product = await ebay.processProduct(productList[i]);
-                queue.enqueue(product);
-                emitter.emit('newProduct', product);
-            } else
-                queue.enqueue(productList[i]);
-        }
-    } else {
-        const queueLast = queue[queue.length - 1];
-        let insert = false;
-        for (var i in productList) {
-            taskLogger.debug(productList);
-            if (productList[i].link == queueLast.link)
-                insert = true;
-            else if (insert) {
-                queue.dequeue();
-                const product = await ebay.processProduct(productList[i]);
-                queue.enqueue(product);
-                emitter.emit('newProduct', product);
-            }
+    productList.map(element => element.link = element.link.split('?')[0]);
+
+    for (let i = 0; i < productList.length && i < process.env.PRODUCTS_TO_SEND; ++i) {
+        if (processedLinks.has(productList[i].link)) continue;
+        const product = await ebay.processProduct(productList[i]);
+        emitter.emit('newProduct', product);
+        processedLinks.add(productList[i].link);
+        if (processedLinks.size > 10000) {
+            const firstProcessed = processedLinks.values().next().value;
+            processedLinks.delete(firstProcessed);
         }
     }
 }
 
-emitter.on('newProduct', async (product) => { await sendMessage(product); });
+emitter.on('newProduct', async (product) => {
+    await sendMessage(product);
+});

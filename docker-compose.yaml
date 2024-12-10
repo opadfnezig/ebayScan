@@ -34,7 +34,7 @@ services:
       #DATABASE_PORT: ${DATABASE_PORT}
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       KAFKA_BROKER: ${KAFKA_BROKER}
-      SEQ_URL: ${SEQ_URL}lfq
+      SEQ_URL: ${SEQ_URL}
     ports:
       - '3000:3000'
     depends_on:
@@ -48,7 +48,23 @@ services:
       - /usr/bin/docker:/usr/bin/docker
     networks:
       - es_network
-
+  dbwriter:
+    build:
+      context: ./dbwriter
+    environment:
+      MONGODB_USERNAME: ${MONGODB_USERNAME}
+      MONGODB_PASSWORD: ${MONGODB_PASSWORD}
+      DATABASE_HOST: ${DATABASE_HOST}
+      DATABASE_NAME: ${DATABASE_NAME}
+      KAFKA_BROKER: ${KAFKA_BROKER}
+      SEQ_URL: ${SEQ_URL}
+    depends_on:
+      - message-broker
+    volumes:
+      - ./global/database:/usr/src/app/database
+      - ./global/logger:/usr/src/app/logger
+    networks:
+      - es_network
   zookeeper:
     image: confluentinc/cp-zookeeper:latest
     environment:
@@ -75,6 +91,17 @@ services:
     networks:
       - es_network
     restart: on-failure
+
+  kafdrop:
+    image: obsidiandynamics/kafdrop
+    environment:
+      KAFKA_BROKERCONNECT: message-broker:9092
+    ports:
+      - '9000:9000'
+    depends_on:
+      - message-broker
+    networks:
+      - es_network
 
 volumes:
   seq-data:
